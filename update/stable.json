@@ -1,0 +1,17 @@
+{
+  "channel": "stable",
+  "versionName": "0.0.4",
+  "versionCode": 5,
+  "isReady": true,
+  "releaseNotes": "# stable-v0.0.4\n\n新增 :\n- 小說閱讀器新增單頁模式(Beta測試,分段算法有大量已知問題)\n- 收藏夾批量下載(長按選擇後選單新增下載按鈕)\n修復 :\n- 修復下載狀態已知問題\n- 大部分Ruby字樣排版錯誤問題\n- 修復 部分任務/彈窗提示 切頁時被強制中斷問題\n更改 :\n- 完善我的日誌\"編輯/刪除\"按鈕\n其他 :\n- 無\n\n將來預計的更新 :\n- IOS版本依舊遙遙無期, 求協助者~\n",
+  "assets": [
+    {
+      "platform": "android",
+      "type": "universal-apk",
+      "url": "https://github.com/LittleSurvival/yamibo-app/releases/download/5/yamibo-stable-v0.0.4.apk",
+      "sha256": "ce61f44762f80d9363312f791c0fa59149be0a750019eedc62bee7869a62ced6",
+      "size": 17978718
+    }
+  ],
+  "releaseUrl": "https://github.com/LittleSurvival/yamibo-app/releases/tag/5"
+}
