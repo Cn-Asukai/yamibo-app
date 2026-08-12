@@ -91,6 +91,11 @@ fun YamiboWafRecoveryRoot(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> isForeground = true
+                // ON_PAUSE/ON_STOP/ON_DESTROY report the host as unavailable. The SDK coordinator
+                // treats that as "wait for a usable host" (pausing the challenge budget) instead of
+                // failing the flight, so transient pauses (permission dialogs), rotation, and
+                // backgrounding no longer abort an in-flight NOX WAF recovery; only a host wait
+                // timeout or a real challenge failure ends it.
                 Lifecycle.Event.ON_PAUSE,
                 Lifecycle.Event.ON_STOP,
                 Lifecycle.Event.ON_DESTROY -> isForeground = false
