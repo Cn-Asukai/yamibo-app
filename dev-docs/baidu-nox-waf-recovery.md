@@ -9,12 +9,23 @@ A regular HTTP client cannot execute this JavaScript, so repeating the same requ
 ## How the App Recovers
 
 1. `yamibo-api` identifies Baidu WAF only when an HTTP 405 response body contains a known NOX marker. Ordinary HTTP 405 responses do not start recovery.
-2. While the app is in the foreground, the API creates a system-native WebView behind the existing app content and loads the same Yamibo URL. The WebView is never shown to the user.
+2. While a UI host is available, the API creates a system-native WebView behind the existing app content and loads the same Yamibo URL. The WebView is never shown to the user.
 3. The API polls the WebView cookie store without waiting for the forum page to finish loading. It stops the WebView as soon as `nox_jst_v1` is available.
 4. The new NOX cookie replaces only the entry with the same name in the client's composed Cookie header. Login cookies remain unchanged.
 5. The API validates the cookie with a safe same-origin GET. After successful validation, it replays the original request at most once.
 
 Concurrent requests share a single WebView challenge instead of creating multiple WebViews.
+
+## Recovery Flight and Host Lifecycle
+
+A recovery "flight" (the pending challenge for the original request) is owned by the client coordinator and is deliberately decoupled from the UI host that executes the challenge:
+
+- **No host mounted**: a detected challenge waits (up to `hostWaitTimeoutMillis`, default 30s) for a host to appear instead of failing immediately. A background request therefore suspends in `WAITING_FOR_HOST` rather than failing with `FOREGROUND_REQUIRED`.
+- **Host lost mid-flight** (rotation, activity recreation, background pause): the flight survives. The challenge budget pauses while no host is usable and resumes when one returns, so the window is not burned by the outage. The WebView itself is recreated by the new host; it is never migrated.
+- **Stale detach guard**: each host composition registers a unique epoch. A delayed detach from an old host can never evict a newer host.
+- **When it still fails**: only a host wait timeout (`FOREGROUND_REQUIRED`), the challenge budget (`TIMED_OUT`), a rejected cookie or failed replay (`VERIFICATION_FAILED`), or client close (`CANCELLED`) ends a flight.
+
+Because the flight outlives the activity, the `YamiboClient` must also outlive it: the app holds the client at process scope (Android `MainActivity` companion, iOS top-level holder) instead of closing it when an activity is recreated.
 
 ## User Experience
 
