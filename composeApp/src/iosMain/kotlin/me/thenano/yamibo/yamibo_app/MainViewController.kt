@@ -54,6 +54,11 @@ import me.thenano.yamibo.yamibo_app.appsync.AppSyncLifecycleController
 import me.thenano.yamibo.yamibo_app.appsync.attachIOSAppSyncLifecycle
 import me.thenano.yamibo.yamibo_app.appsync.detachIOSAppSyncLifecycle
 
+/** Process-scoped Yamibo client shared by every view controller instance. */
+private object IOSYamiboClientHolder {
+    val client: YamiboClient = YamiboClient()
+}
+
 fun MainViewController() = ComposeUIViewController {
     /** Navigator Logic */
     val navigator = rememberRestorableNavigator()
@@ -80,10 +85,10 @@ fun MainViewController() = ComposeUIViewController {
     val rawSettingsStore = remember { IOSSettingsStore() }
 
     /** Repository Logic */
-    val yamiboClient = remember { YamiboClient() }
-    DisposableEffect(yamiboClient) {
-        onDispose { yamiboClient.close() }
-    }
+    // Process-scoped: the WAF recovery flight must survive view controller recreation, so the
+    // client (and its challenge coordinator) lives for the whole process instead of being closed
+    // when this composition is disposed.
+    val yamiboClient = IOSYamiboClientHolder.client
     val authRepository = remember { IOSAuthRepository(cookieStore, userStore, yamiboClient, forumFavoriteStore) }
 
     val dbFactory = remember { DatabaseFactory() }
