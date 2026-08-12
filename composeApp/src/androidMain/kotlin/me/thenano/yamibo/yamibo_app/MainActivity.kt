@@ -157,10 +157,10 @@ class MainActivity : ComponentActivity() {
             val rawSettingsStore = remember { AndroidSettingsStore(context) }
 
             /** Repository Logic */
-            val yamiboClient = remember { YamiboClient(timeoutMillis = 60_000L) }
-            DisposableEffect(yamiboClient) {
-                onDispose { yamiboClient.close() }
-            }
+            // Process-scoped: the WAF recovery flight must survive activity recreation (rotation),
+            // so the client (and its challenge coordinator) lives for the whole process instead of
+            // being closed when this composition is disposed.
+            val yamiboClient = MainActivity.yamiboClient
             val authRepository = remember {
                 AndroidAuthRepository(cookieStore, userStore, yamiboClient, forumFavoriteStore)
             }
@@ -428,5 +428,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_FROM_NOTIFICATION_SIGN_IN = "extra_from_notification_sign_in"
+
+        /** Process-scoped Yamibo client shared by every activity instance. */
+        val yamiboClient by lazy { YamiboClient(timeoutMillis = 60_000L) }
     }
 }
