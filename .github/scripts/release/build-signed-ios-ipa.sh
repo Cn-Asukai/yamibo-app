@@ -7,7 +7,7 @@ if [ -z "${RUNNER_TEMP:-}" ]; then
   RUNNER_TEMP="$(mktemp -d)"
 fi
 
-work="$RUNNER_TEMP/testflight"
+work="$RUNNER_TEMP/ios-signed"
 mkdir -p "$work"
 
 keychain_path=""
@@ -63,37 +63,14 @@ require() {
   fi
 }
 
-case "${TESTFLIGHT_UPLOAD:-}" in
-  0|1) ;;
-  *)
-    echo "TESTFLIGHT_UPLOAD must be 0 or 1" >&2
-    exit 1
-    ;;
-esac
-
 require APPLE_TEAM_ID
 require APPLE_DISTRIBUTION_P12_BASE64
 require APPLE_DISTRIBUTION_P12_PASSWORD
 require APP_STORE_CONNECT_PROFILE_BASE64
-if [ "$TESTFLIGHT_UPLOAD" = 1 ]; then
-  require APP_STORE_CONNECT_KEY_ID
-  require APP_STORE_CONNECT_ISSUER_ID
-  require APP_STORE_CONNECT_API_KEY
-fi
 
 if [[ ! "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]; then
   echo "APPLE_TEAM_ID must be a 10 character Apple Team ID" >&2
   exit 1
-fi
-if [ "$TESTFLIGHT_UPLOAD" = 1 ]; then
-  if [[ ! "$APP_STORE_CONNECT_KEY_ID" =~ ^[A-Z0-9]{10}$ ]]; then
-    echo "APP_STORE_CONNECT_KEY_ID must be a 10 character key id" >&2
-    exit 1
-  fi
-  if [[ ! "$APP_STORE_CONNECT_ISSUER_ID" =~ ^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$ ]]; then
-    echo "APP_STORE_CONNECT_ISSUER_ID must be a UUID" >&2
-    exit 1
-  fi
 fi
 
 xcode_app="/Applications/Xcode_26.6.app"
@@ -358,31 +335,3 @@ fi
 shasum -a 256 "$ipa"
 echo "Signed IPA: $ipa"
 
-if [ "$TESTFLIGHT_UPLOAD" != 1 ]; then
-  echo "TESTFLIGHT_UPLOAD=0; App Store Connect upload skipped"
-  exit 0
-fi
-
-umask 077
-key_dir="$HOME/.appstoreconnect/private_keys"
-mkdir -p "$key_dir"
-key_path="$key_dir/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-if printf '%s' "$APP_STORE_CONNECT_API_KEY" | grep -q -- '-----BEGIN '; then
-  printf '%s\n' "$APP_STORE_CONNECT_API_KEY" > "$key_path"
-else
-  printf '%s' "$APP_STORE_CONNECT_API_KEY" | tr -d '[:space:]' | base64 -d > "$key_path"
-fi
-umask 022
-chmod 600 "$key_path"
-if ! grep -q -- '-----BEGIN PRIVATE KEY-----' "$key_path"; then
-  echo "APP_STORE_CONNECT_API_KEY is not an App Store Connect .p8 private key" >&2
-  exit 1
-fi
-
-xcrun altool --validate-app -f "$ipa" -t ios \
-  --apiKey "$APP_STORE_CONNECT_KEY_ID" \
-  --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
-xcrun altool --upload-app -f "$ipa" -t ios \
-  --apiKey "$APP_STORE_CONNECT_KEY_ID" \
-  --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
-echo "Uploaded ${version_name} (${version_code}) to App Store Connect"
